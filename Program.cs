@@ -5,33 +5,33 @@ namespace WinDigits
 {
     internal static class Program
     {
-        private static readonly List<Form> _digitForms = [];
+        private static readonly DigitForm _digitForm = new();
         private static IntPtr _hookID = IntPtr.Zero;
 
         private static void ShowDigits()
         {
-            if (_digitForms.Any())
+            if (_digitForm.Visible)
             {
+                // Already visible, bring to foreground
+                Win32.SetForegroundWindow(_digitForm.Handle);
                 return;
             }
-            int i = 1;
-            foreach (var application in UIAutomation.GetTaskbarApplications().Take(10))
-            {
-                var firstButtonRectangle = application.Buttons[0].BoundingRectangle;
-                var form = new DigitForm(i % 10, firstButtonRectangle.Left, firstButtonRectangle.Top);
-                _digitForms.Add(form);
-                form.Show();
-                i++;
-            }
+            _digitForm.AppButtonRectangles = UIAutomation.GetTaskbarApplications()
+                .Take(10)
+                .Select(app => app.Buttons[0].BoundingRectangle)
+                .ToArray();
+            _digitForm.Show();
+            Win32.SetForegroundWindow(_digitForm.Handle);
         }
 
         private static void HideDigits()
         {
-            foreach (var form in _digitForms)
+            if (!_digitForm.Visible)
             {
-                form.Close();
+                // Already hidden, nothing to do
+                return;
             }
-            _digitForms.Clear();
+            _digitForm.Hide();
         }
 
         /// <summary>
@@ -43,9 +43,6 @@ namespace WinDigits
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
-            var _dummyForm = new Form();
-            _dummyForm.Show();
-            _dummyForm.Hide();
             Win32.LowLevelKeyboardProc proc = (nCode, wParam, lParam) =>
             {
                 if (nCode >= 0 && wParam == Win32.WM_KEYDOWN && Marshal.ReadInt32(lParam) == 91) ShowDigits();
@@ -59,12 +56,16 @@ namespace WinDigits
 
         class DigitForm : Form
         {
-            public DigitForm(int digit, int x, int y)
+            public Rectangle[] AppButtonRectangles { get; set; } = [];
+
+            public DigitForm()
             {
-                ClientSize = new(20, 20);
+                var taskbarRectangle = UIAutomation.GetTaskbarRectangle()
+                    ?? throw new InvalidOperationException("Failed to locate taskbar");
                 StartPosition = FormStartPosition.Manual;
-                Left = x;
-                Top = y;
+                ClientSize = taskbarRectangle.Size;
+                Left = taskbarRectangle.Left;
+                Top = taskbarRectangle.Top;
                 BackColor = Color.Black;
                 ShowInTaskbar = false;
                 DoubleBuffered = true;
@@ -74,16 +75,24 @@ namespace WinDigits
                 SizeGripStyle = SizeGripStyle.Hide;
                 TopMost = true;
                 Click += (o, e) => Application.Exit();
-                string text = digit.ToString();
-                var font = new Font("Tahoma", 14, FontStyle.Bold);
-                Paint += (o, e) =>
+                Font = new("Tahoma", 14, FontStyle.Bold);
+                Paint += OnPaint;
+            }
+
+            private void OnPaint(object? sender, PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                g.Clear(TransparencyKey);
+                int i = 1;
+                foreach (var rect in AppButtonRectangles)
                 {
-                    var g = e.Graphics;
-                    var size = g.MeasureString(text, font).ToSize();
+                    var text = (i % 10).ToString();
+                    var size = g.MeasureString(text, Font).ToSize();
                     Debug.Assert(size.Height > size.Width);
-                    g.FillEllipse(Brushes.Red, 0, 0, size.Height, size.Height);
-                    g.DrawString(text, font, Brushes.White, (size.Height - size.Width) / 2, 0);
-                };
+                    g.FillEllipse(Brushes.Red, rect.X - Left, rect.Y - Top, size.Height, size.Height);
+                    g.DrawString(text, Font, Brushes.White, rect.X - Left + (size.Height - size.Width) / 2, rect.Y - Top);
+                    i++;
+                }
             }
 
             protected override CreateParams CreateParams

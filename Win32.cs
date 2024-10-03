@@ -23,5 +23,8 @@ namespace WinDigits
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern IntPtr GetModuleHandle(IntPtr lpModuleName);
+
+        [DllImport("User32.dll")]
+        public static extern int SetForegroundWindow(nint hWnd);
     }
 }

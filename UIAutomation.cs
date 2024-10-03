@@ -20,6 +20,17 @@ namespace WinDigits
         [GeneratedRegex("- (\\d+) ")]
         private static partial Regex NumberAfterDash();
 
+        public static Rectangle? GetTaskbarRectangle()
+        {
+            var uia = new CUIAutomation() ?? throw new InvalidOperationException("Cannot initialize UI Automation framework");
+            var root = uia.GetRootElement() ?? throw new InvalidOperationException("Empty response from UI Automation framework");
+            var trayWnd = root.FindFirst(TreeScope.TreeScope_Children,
+                uia.CreateAndCondition(
+                    uia.CreatePropertyCondition(UIA_ControlTypePropertyId, UIA_PaneControlTypeId),
+                    uia.CreatePropertyCondition(UIA_ClassNamePropertyId, "Shell_TrayWnd")));
+            return trayWnd.CurrentBoundingRectangle.ToRectangle();
+        }
+
         public static IEnumerable<TaskbarApplication> GetTaskbarApplications()
         {
             var uia = new CUIAutomation() ?? throw new InvalidOperationException("Cannot initialize UI Automation framework");
