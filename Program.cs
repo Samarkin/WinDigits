@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using UIAutomationClient;
 
 namespace WinDigits
 {
@@ -15,35 +14,14 @@ namespace WinDigits
             {
                 return;
             }
-            var uia = new CUIAutomation();
-            var root = uia.GetRootElement();
-            var trayWnd = root.FindFirst(TreeScope.TreeScope_Children,
-                uia.CreateAndCondition(
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ControlTypePropertyId, UIA_ControlTypeIdConstants.UIA_PaneControlTypeId),
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ClassNamePropertyId, "Shell_TrayWnd")));
-            var taskbarFrame = trayWnd.FindFirst(TreeScope.TreeScope_Descendants,
-                uia.CreateAndCondition(
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ControlTypePropertyId, UIA_ControlTypeIdConstants.UIA_PaneControlTypeId),
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ClassNamePropertyId, "Taskbar.TaskbarFrameAutomationPeer")));
-            var buttons = taskbarFrame.FindAll(TreeScope.TreeScope_Descendants,
-                uia.CreateAndCondition(
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ControlTypePropertyId, UIA_ControlTypeIdConstants.UIA_ButtonControlTypeId),
-                    uia.CreatePropertyCondition(UIA_PropertyIdConstants.UIA_ClassNamePropertyId, "Taskbar.TaskListButtonAutomationPeer")));
-            int buttonCount = Math.Min(buttons.Length, 10);
-            if (buttonCount == 0)
+            int i = 1;
+            foreach (var application in UIAutomation.GetTaskbarApplications().Take(10))
             {
-                return;
-            }
-            for (int i = 0; i < buttonCount; i++)
-            {
-                var button = buttons.GetElement(i);
-                var name = button.CurrentName;
-                var automationId = button.CurrentAutomationId;
-                var helpText = button.CurrentHelpText;
-                var rect = button.CurrentBoundingRectangle;
-                var form = new DigitForm((i + 1) % 10, rect.left, rect.top);
+                var firstButtonRectangle = application.Buttons[0].BoundingRectangle;
+                var form = new DigitForm(i % 10, firstButtonRectangle.Left, firstButtonRectangle.Top);
                 _digitForms.Add(form);
                 form.Show();
+                i++;
             }
         }
 
@@ -83,7 +61,7 @@ namespace WinDigits
         {
             public DigitForm(int digit, int x, int y)
             {
-                ClientSize = new Size(20, 20);
+                ClientSize = new(20, 20);
                 StartPosition = FormStartPosition.Manual;
                 Left = x;
                 Top = y;
