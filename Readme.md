@@ -9,6 +9,8 @@ Windows allows you to quickly switch between applications by holding down Window
 Unfortunately, taskbar buttons are dynamic (unless pinned) and Windows does not provide any hints on which number corresponds to which button.
 WinDigits aims to fix that by displaying button numbers any time you hold down your Windows key.
 
+![Screenshot](screenshot.png)
+
 ## Compatibility
 
 Tested on Windows 11 only.
